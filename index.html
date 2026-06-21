@@ -212,6 +212,7 @@
   "use strict";
 
   var KEY = "video-scripter:v1";
+  var SEED_KEY = "video-scripter:seeded:v1";
   var STATUSES = ["idea", "scripting", "filmed", "posted"];
 
   var state = { videos: [], selectedId: null, query: "" };
@@ -492,6 +493,60 @@
 
   function renderAll() { renderList(); renderEditor(); }
 
+  // ---- seed from repo (ideas.json) ----
+  // Adds any idea from ideas.json we haven't imported before. Never touches
+  // ideas you've edited, and won't re-add ones you've deleted.
+  function loadSeededIds() {
+    try {
+      var raw = localStorage.getItem(SEED_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+  function saveSeededIds(ids) {
+    try { localStorage.setItem(SEED_KEY, JSON.stringify(ids)); } catch (e) {}
+  }
+  function seedFromRepo() {
+    if (!window.fetch) return;
+    fetch("ideas.json", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !Array.isArray(data.ideas)) return;
+        var seeded = loadSeededIds();
+        var seen = {};
+        seeded.forEach(function (id) { seen[id] = true; });
+        state.videos.forEach(function (v) { seen[v.id] = true; });
+        var added = 0;
+        var base = now();
+        // walk the file bottom-up so the first idea ends up on top
+        for (var k = data.ideas.length - 1; k >= 0; k--) {
+          var it = data.ideas[k];
+          if (!it || !it.id || seen[it.id]) continue;
+          state.videos.unshift({
+            id: it.id,
+            title: it.title || "",
+            status: STATUSES.indexOf(it.status) !== -1 ? it.status : "idea",
+            concept: it.concept || "",
+            hook: it.hook || "",
+            body: it.body || "",
+            cta: it.cta || "",
+            created: base + added,
+            updated: base + added
+          });
+          seen[it.id] = true;
+          seeded.push(it.id);
+          added++;
+        }
+        if (added > 0) {
+          saveSeededIds(seeded);
+          if (!state.selectedId) state.selectedId = state.videos[0] ? state.videos[0].id : null;
+          save();
+          renderAll();
+        }
+      })
+      .catch(function () { /* offline or file missing — just skip */ });
+  }
+
   // ---- wire up ----
   document.getElementById("newBtn").onclick = createVideo;
   document.getElementById("search").oninput = function (e) {
@@ -503,6 +558,7 @@
   // ensure selection points at something that exists
   if (state.selectedId && !selected()) state.selectedId = state.videos[0] ? state.videos[0].id : null;
   renderAll();
+  seedFromRepo();
 })();
 </script>
 </body>
