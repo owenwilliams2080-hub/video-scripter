@@ -6,19 +6,19 @@
 <title>Video Scripter</title>
 <style>
   :root {
-    --bg: #0e1116;
-    --panel: #161b22;
-    --panel-2: #1c232d;
-    --border: #2a313c;
-    --text: #e6edf3;
-    --muted: #8b949e;
+    --bg: #ffffff;
+    --panel: #f6f8fa;
+    --panel-2: #ffffff;
+    --border: #d8dee4;
+    --text: #1f2328;
+    --muted: #656d76;
     --accent: #0d7bff;
-    --accent-soft: #0d7bff22;
-    --idea: #8b949e;
+    --accent-soft: #0d7bff14;
+    --idea: #afb8c1;
     --scripting: #d29922;
-    --filmed: #3fb950;
-    --posted: #a371f7;
-    --danger: #f85149;
+    --filmed: #2da44e;
+    --posted: #8250df;
+    --danger: #cf222e;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -89,7 +89,7 @@
     margin-bottom: 8px;
     transition: border-color .12s;
   }
-  .card:hover { border-color: #3a4452; }
+  .card:hover { border-color: #afb8c1; }
   .card.active { border-color: var(--accent); background: var(--accent-soft); }
   .card-title {
     font-size: 14px;
@@ -136,7 +136,7 @@
     padding: 0 0 14px;
     outline: none;
   }
-  .title-input::placeholder { color: #495362; }
+  .title-input::placeholder { color: #8b95a1; }
 
   .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; flex-wrap: wrap; }
   .status-group { display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 4px; }
@@ -156,7 +156,7 @@
     background: var(--panel); border: 1px solid var(--border); color: var(--text);
     font-size: 13px; font-weight: 600; padding: 7px 13px; border-radius: 8px;
   }
-  .ghost-btn:hover { border-color: #3a4452; }
+  .ghost-btn:hover { border-color: #afb8c1; }
   .ghost-btn.danger { color: var(--danger); }
   .ghost-btn.danger:hover { border-color: var(--danger); }
 
@@ -176,11 +176,13 @@
     font-size: 15px;
     line-height: 1.6;
     padding: 13px 15px;
-    resize: vertical;
+    resize: none;
+    overflow: hidden;
     outline: none;
   }
   textarea:focus { border-color: var(--accent); }
-  textarea::placeholder { color: #495362; }
+  textarea::placeholder { color: #8b95a1; }
+  .concept-area { min-height: 60px; }
   .hook-area { min-height: 70px; }
   .body-area { min-height: 220px; }
   .cta-area  { min-height: 70px; }
@@ -189,8 +191,8 @@
 
   /* scrollbars */
   ::-webkit-scrollbar { width: 10px; }
-  ::-webkit-scrollbar-thumb { background: #2a313c; border-radius: 6px; }
-  ::-webkit-scrollbar-thumb:hover { background: #3a4452; }
+  ::-webkit-scrollbar-thumb { background: #d0d7de; border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: #afb8c1; }
 </style>
 </head>
 <body>
@@ -253,6 +255,7 @@
       id: uid(),
       title: "",
       status: "idea",
+      concept: "",
       hook: "",
       body: "",
       cta: "",
@@ -290,7 +293,7 @@
     var q = state.query.trim().toLowerCase();
     if (!q) return state.videos;
     return state.videos.filter(function (v) {
-      return (v.title + " " + v.hook + " " + v.body + " " + v.cta).toLowerCase().indexOf(q) !== -1;
+      return (v.title + " " + (v.concept || "") + " " + v.hook + " " + v.body + " " + v.cta).toLowerCase().indexOf(q) !== -1;
     });
   }
 
@@ -407,6 +410,8 @@
     // sections
     inner.appendChild(title);
     inner.appendChild(toolbar);
+    inner.appendChild(makeSection("Concept", "the one-line idea — what's this video about", "concept", v.concept || "", "concept-area",
+      "e.g. “Why most workout apps make logging harder than a notebook.”"));
     inner.appendChild(makeSection("Hook", "first 3 seconds — stop the scroll", "hook", v.hook, "hook-area",
       "e.g. “Most people log workouts wrong. Here’s the 5-second fix.”"));
     inner.appendChild(makeSection("Body", "the actual content / talking points", "body", v.body, "body-area",
@@ -416,6 +421,15 @@
 
     scroll.appendChild(inner);
     editorEl.appendChild(scroll);
+
+    // size textareas to their content now that they're in the DOM
+    var areas = editorEl.querySelectorAll("textarea");
+    for (var i = 0; i < areas.length; i++) autosize(areas[i]);
+  }
+
+  function autosize(ta) {
+    ta.style.height = "auto";
+    ta.style.height = ta.scrollHeight + "px";
   }
 
   function makeSection(label, hint, field, value, areaClass, placeholder) {
@@ -423,12 +437,12 @@
     sec.className = "section";
     var lab = document.createElement("div");
     lab.className = "section-label";
-    lab.innerHTML = label + ' <span class="hint">— ' + hint + "</span>";
+    lab.textContent = label;
     var ta = document.createElement("textarea");
     ta.className = areaClass;
     ta.placeholder = placeholder;
     ta.value = value;
-    ta.oninput = function () { patch(field, ta.value); };
+    ta.oninput = function () { patch(field, ta.value); autosize(ta); };
     sec.appendChild(lab);
     sec.appendChild(ta);
     return sec;
@@ -438,6 +452,9 @@
     var lines = [];
     lines.push(v.title.trim() || "Untitled idea");
     lines.push("Status: " + v.status);
+    lines.push("");
+    lines.push("CONCEPT");
+    lines.push((v.concept || "").trim() || "—");
     lines.push("");
     lines.push("HOOK");
     lines.push(v.hook.trim() || "—");
