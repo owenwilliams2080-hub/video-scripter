@@ -115,6 +115,22 @@
   .badge.posted { background: var(--posted); }
   .card-date { font-size: 11px; color: var(--muted); margin-left: auto; }
 
+  .sidebar-footer {
+    border-top: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .sidebar-footer .email { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .signout {
+    background: none; border: none; color: var(--accent);
+    font-size: 12px; font-weight: 600; padding: 0;
+  }
+  .sync-dot { color: var(--muted); font-size: 11px; }
+
   /* Editor */
   .editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .editor-empty {
@@ -187,7 +203,29 @@
   .body-area { min-height: 220px; }
   .cta-area  { min-height: 70px; }
 
-  .saved-flag { font-size: 12px; color: var(--muted); }
+  /* Login gate */
+  .gate {
+    position: fixed; inset: 0; z-index: 50;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .gate-card {
+    width: 100%; max-width: 380px; text-align: center;
+  }
+  .gate .brand { justify-content: center; font-size: 17px; margin-bottom: 6px; }
+  .gate .sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; line-height: 1.5; }
+  .gate input {
+    width: 100%; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 11px 13px; font-size: 15px; color: var(--text);
+    outline: none; margin-bottom: 10px;
+  }
+  .gate input:focus { border-color: var(--accent); }
+  .gate .new-btn { padding: 11px; font-size: 15px; }
+  .gate-msg { margin-top: 16px; font-size: 13px; line-height: 1.5; }
+  .gate-msg.ok { color: var(--filmed); }
+  .gate-msg.err { color: var(--danger); }
+  .hidden { display: none !important; }
 
   /* scrollbars */
   ::-webkit-scrollbar { width: 10px; }
@@ -196,94 +234,172 @@
 </style>
 </head>
 <body>
-  <aside class="sidebar">
+  <!-- Login gate (shown until signed in) -->
+  <div class="gate" id="gate">
+    <div class="gate-card">
+      <div class="brand"><span class="dot"></span> Video Scripter</div>
+      <div class="sub">Sign in to load your video ideas. They sync across every device you log in on.</div>
+      <input id="emailInput" type="email" placeholder="you@email.com" autocomplete="email" />
+      <button class="new-btn" id="loginBtn">Email me a sign-in link</button>
+      <div class="gate-msg" id="gateMsg"></div>
+    </div>
+  </div>
+
+  <aside class="sidebar hidden" id="sidebar">
     <div class="sidebar-header">
       <div class="brand"><span class="dot"></span> Video Scripter</div>
       <button class="new-btn" id="newBtn">+ New video idea</button>
       <input class="search" id="search" placeholder="Search ideas…" />
     </div>
     <div class="list" id="list"></div>
+    <div class="sidebar-footer">
+      <span class="email" id="userEmail"></span>
+      <span class="sync-dot" id="syncDot"></span>
+      <button class="signout" id="signoutBtn">Sign out</button>
+    </div>
   </aside>
 
-  <main class="editor" id="editor"></main>
+  <main class="editor hidden" id="editor"></main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function () {
   "use strict";
 
-  var KEY = "video-scripter:v1";
-  var SEED_KEY = "video-scripter:seeded:v1";
+  // ---- backend config ----
+  var SUPABASE_URL = "https://oujcaejauqbilvsebtry.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_rhE_ITmQ_x7bmYZwY4sdeQ_ZhEIgQ6F";
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
   var STATUSES = ["idea", "scripting", "filmed", "posted"];
+  var FIELDS = ["title", "status", "concept", "hook", "body", "cta"];
 
-  var state = { videos: [], selectedId: null, query: "" };
-
-  // ---- persistence ----
-  function load() {
-    try {
-      var raw = localStorage.getItem(KEY);
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.videos)) {
-          state.videos = parsed.videos;
-          state.selectedId = parsed.selectedId || null;
-        }
-      }
-    } catch (e) { /* ignore corrupt store */ }
-  }
-  function save() {
-    try {
-      localStorage.setItem(KEY, JSON.stringify({ videos: state.videos, selectedId: state.selectedId }));
-    } catch (e) { /* storage full / blocked */ }
-  }
+  var state = { videos: [], selectedId: null, query: "", user: null };
 
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
   function now() { return Date.now(); }
-
   function fmtDate(ts) {
     var d = new Date(ts);
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
-
   function selected() {
     return state.videos.find(function (v) { return v.id === state.selectedId; }) || null;
   }
 
-  // ---- actions ----
+  // ---- sync indicator ----
+  var syncDot = document.getElementById("syncDot");
+  var pending = 0;
+  function syncStart() { pending++; syncDot.textContent = "saving…"; }
+  function syncDone() { pending = Math.max(0, pending - 1); if (pending === 0) syncDot.textContent = "saved"; }
+  function syncErr() { pending = Math.max(0, pending - 1); syncDot.textContent = "save failed — check connection"; }
+
+  // ---- backend ops ----
+  function rowToVideo(r) {
+    return {
+      id: r.id, title: r.title || "", status: r.status || "idea",
+      concept: r.concept || "", hook: r.hook || "", body: r.body || "",
+      cta: r.cta || "", created: Number(r.created) || 0, updated: Number(r.updated) || 0
+    };
+  }
+
+  function loadVideos() {
+    return sb.from("video_scripter_videos").select("*").order("updated", { ascending: false })
+      .then(function (res) {
+        if (res.error) throw res.error;
+        state.videos = (res.data || []).map(rowToVideo);
+      });
+  }
+
+  // Pull any NEW ideas from ideas.json into this account (never re-adds deleted ones).
+  function seedFromRepo() {
+    if (!window.fetch) return Promise.resolve();
+    var seededSet = {};
+    return sb.from("video_scripter_seeded").select("seed_id")
+      .then(function (res) {
+        if (res.error) throw res.error;
+        (res.data || []).forEach(function (r) { seededSet[r.seed_id] = true; });
+        return fetch("ideas.json", { cache: "no-store" });
+      })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !Array.isArray(data.ideas)) return;
+        var fresh = data.ideas.filter(function (it) { return it && it.id && !seededSet[it.id]; });
+        if (!fresh.length) return;
+        var base = now();
+        var rows = fresh.map(function (it, idx) {
+          return {
+            user_id: state.user.id,
+            id: it.id,
+            title: it.title || "",
+            status: STATUSES.indexOf(it.status) !== -1 ? it.status : "idea",
+            concept: it.concept || "",
+            hook: it.hook || "",
+            body: it.body || "",
+            cta: it.cta || "",
+            created: base + idx,
+            updated: base + idx
+          };
+        });
+        var marks = fresh.map(function (it) { return { user_id: state.user.id, seed_id: it.id }; });
+        return sb.from("video_scripter_videos").upsert(rows, { onConflict: "user_id,id", ignoreDuplicates: true })
+          .then(function (r1) {
+            if (r1.error) throw r1.error;
+            return sb.from("video_scripter_seeded").upsert(marks, { onConflict: "user_id,seed_id", ignoreDuplicates: true });
+          })
+          .then(function (r2) { if (r2.error) throw r2.error; });
+      })
+      .catch(function (e) { /* offline / file missing — skip seeding */ });
+  }
+
   function createVideo() {
     var v = {
-      id: uid(),
-      title: "",
-      status: "idea",
-      concept: "",
-      hook: "",
-      body: "",
-      cta: "",
-      created: now(),
-      updated: now()
+      id: uid(), title: "", status: "idea",
+      concept: "", hook: "", body: "", cta: "",
+      created: now(), updated: now()
     };
     state.videos.unshift(v);
     state.selectedId = v.id;
-    save();
     renderAll();
     var t = document.querySelector(".title-input");
     if (t) t.focus();
+    syncStart();
+    sb.from("video_scripter_videos").insert({
+      user_id: state.user.id, id: v.id, title: "", status: "idea",
+      concept: "", hook: "", body: "", cta: "", created: v.created, updated: v.updated
+    }).then(function (r) { r.error ? syncErr() : syncDone(); });
   }
 
   function deleteVideo(id) {
     state.videos = state.videos.filter(function (v) { return v.id !== id; });
     if (state.selectedId === id) state.selectedId = state.videos[0] ? state.videos[0].id : null;
-    save();
     renderAll();
+    syncStart();
+    sb.from("video_scripter_videos").delete().eq("id", id)
+      .then(function (r) { r.error ? syncErr() : syncDone(); });
   }
 
+  // debounced field save
+  var saveTimers = {};
   function patch(field, value) {
     var v = selected();
     if (!v) return;
     v[field] = value;
     v.updated = now();
-    save();
+    var id = v.id;
+    if (saveTimers[id]) clearTimeout(saveTimers[id]);
+    syncDot.textContent = "saving…";
+    saveTimers[id] = setTimeout(function () {
+      delete saveTimers[id];
+      var cur = state.videos.find(function (x) { return x.id === id; });
+      if (!cur) return;
+      var update = { updated: cur.updated };
+      update[field] = cur[field];
+      syncStart();
+      sb.from("video_scripter_videos").update(update).eq("id", id)
+        .then(function (r) { r.error ? syncErr() : syncDone(); });
+    }, 600);
   }
 
   // ---- rendering ----
@@ -318,7 +434,7 @@
     vids.forEach(function (v) {
       var card = document.createElement("div");
       card.className = "card" + (v.id === state.selectedId ? " active" : "");
-      card.onclick = function () { state.selectedId = v.id; save(); renderAll(); };
+      card.onclick = function () { state.selectedId = v.id; renderAll(); };
 
       var title = document.createElement("div");
       if (v.title.trim()) {
@@ -364,14 +480,12 @@
     var inner = document.createElement("div");
     inner.className = "editor-inner";
 
-    // title
     var title = document.createElement("input");
     title.className = "title-input";
     title.placeholder = "Video title…";
     title.value = v.title;
     title.oninput = function () { patch("title", title.value); renderList(); };
 
-    // toolbar: status + copy + delete
     var toolbar = document.createElement("div");
     toolbar.className = "toolbar";
 
@@ -391,10 +505,7 @@
     var copyBtn = document.createElement("button");
     copyBtn.className = "ghost-btn";
     copyBtn.textContent = "Copy script";
-    copyBtn.onclick = function () {
-      var text = buildScriptText(v);
-      copyToClipboard(text, copyBtn);
-    };
+    copyBtn.onclick = function () { copyToClipboard(buildScriptText(v), copyBtn); };
 
     var delBtn = document.createElement("button");
     delBtn.className = "ghost-btn danger";
@@ -408,22 +519,20 @@
     toolbar.appendChild(copyBtn);
     toolbar.appendChild(delBtn);
 
-    // sections
     inner.appendChild(title);
     inner.appendChild(toolbar);
-    inner.appendChild(makeSection("Concept", "the one-line idea — what's this video about", "concept", v.concept || "", "concept-area",
+    inner.appendChild(makeSection("Concept", "concept", v.concept || "", "concept-area",
       "e.g. “Why most workout apps make logging harder than a notebook.”"));
-    inner.appendChild(makeSection("Hook", "first 3 seconds — stop the scroll", "hook", v.hook, "hook-area",
+    inner.appendChild(makeSection("Hook", "hook", v.hook, "hook-area",
       "e.g. “Most people log workouts wrong. Here’s the 5-second fix.”"));
-    inner.appendChild(makeSection("Body", "the actual content / talking points", "body", v.body, "body-area",
+    inner.appendChild(makeSection("Body", "body", v.body, "body-area",
       "Beat-by-beat what you say and show…"));
-    inner.appendChild(makeSection("CTA", "what they should do next", "cta", v.cta, "cta-area",
+    inner.appendChild(makeSection("CTA", "cta", v.cta, "cta-area",
       "e.g. “Download Build free — link in bio.”"));
 
     scroll.appendChild(inner);
     editorEl.appendChild(scroll);
 
-    // size textareas to their content now that they're in the DOM
     var areas = editorEl.querySelectorAll("textarea");
     for (var i = 0; i < areas.length; i++) autosize(areas[i]);
   }
@@ -433,7 +542,7 @@
     ta.style.height = ta.scrollHeight + "px";
   }
 
-  function makeSection(label, hint, field, value, areaClass, placeholder) {
+  function makeSection(label, field, value, areaClass, placeholder) {
     var sec = document.createElement("div");
     sec.className = "section";
     var lab = document.createElement("div");
@@ -493,72 +602,95 @@
 
   function renderAll() { renderList(); renderEditor(); }
 
-  // ---- seed from repo (ideas.json) ----
-  // Adds any idea from ideas.json we haven't imported before. Never touches
-  // ideas you've edited, and won't re-add ones you've deleted.
-  function loadSeededIds() {
-    try {
-      var raw = localStorage.getItem(SEED_KEY);
-      var arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
-    } catch (e) { return []; }
+  // ---- auth UI ----
+  var gate = document.getElementById("gate");
+  var sidebar = document.getElementById("sidebar");
+  var gateMsg = document.getElementById("gateMsg");
+  var emailInput = document.getElementById("emailInput");
+  var loginBtn = document.getElementById("loginBtn");
+
+  function showGate() {
+    gate.classList.remove("hidden");
+    sidebar.classList.add("hidden");
+    editorEl.classList.add("hidden");
   }
-  function saveSeededIds(ids) {
-    try { localStorage.setItem(SEED_KEY, JSON.stringify(ids)); } catch (e) {}
-  }
-  function seedFromRepo() {
-    if (!window.fetch) return;
-    fetch("ideas.json", { cache: "no-store" })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (data) {
-        if (!data || !Array.isArray(data.ideas)) return;
-        var seeded = loadSeededIds();
-        var seen = {};
-        seeded.forEach(function (id) { seen[id] = true; });
-        state.videos.forEach(function (v) { seen[v.id] = true; });
-        var added = 0;
-        var base = now();
-        // walk the file bottom-up so the first idea ends up on top
-        for (var k = data.ideas.length - 1; k >= 0; k--) {
-          var it = data.ideas[k];
-          if (!it || !it.id || seen[it.id]) continue;
-          state.videos.unshift({
-            id: it.id,
-            title: it.title || "",
-            status: STATUSES.indexOf(it.status) !== -1 ? it.status : "idea",
-            concept: it.concept || "",
-            hook: it.hook || "",
-            body: it.body || "",
-            cta: it.cta || "",
-            created: base + added,
-            updated: base + added
-          });
-          seen[it.id] = true;
-          seeded.push(it.id);
-          added++;
-        }
-        if (added > 0) {
-          saveSeededIds(seeded);
-          if (!state.selectedId) state.selectedId = state.videos[0] ? state.videos[0].id : null;
-          save();
-          renderAll();
-        }
-      })
-      .catch(function () { /* offline or file missing — just skip */ });
+  function showApp() {
+    gate.classList.add("hidden");
+    sidebar.classList.remove("hidden");
+    editorEl.classList.remove("hidden");
   }
 
-  // ---- wire up ----
+  loginBtn.onclick = function () {
+    var email = (emailInput.value || "").trim();
+    if (!email) { gateMsg.className = "gate-msg err"; gateMsg.textContent = "Enter your email first."; return; }
+    loginBtn.disabled = true;
+    gateMsg.className = "gate-msg";
+    gateMsg.textContent = "Sending…";
+    sb.auth.signInWithOtp({
+      email: email,
+      options: { emailRedirectTo: location.href.split("#")[0] }
+    }).then(function (res) {
+      loginBtn.disabled = false;
+      if (res.error) {
+        gateMsg.className = "gate-msg err";
+        gateMsg.textContent = res.error.message;
+      } else {
+        gateMsg.className = "gate-msg ok";
+        gateMsg.textContent = "Check your email and tap the sign-in link. You can close this tab.";
+      }
+    });
+  };
+  emailInput.onkeydown = function (e) { if (e.key === "Enter") loginBtn.click(); };
+
+  document.getElementById("signoutBtn").onclick = function () {
+    sb.auth.signOut();
+  };
+
+  var booted = false;
+  function bootApp(session) {
+    state.user = session.user;
+    document.getElementById("userEmail").textContent = session.user.email || "";
+    showApp();
+    if (booted) return;
+    booted = true;
+    syncDot.textContent = "loading…";
+    loadVideos()
+      .then(seedFromRepo)
+      .then(loadVideos)
+      .then(function () {
+        if (state.selectedId && !selected()) state.selectedId = null;
+        if (!state.selectedId && state.videos[0]) state.selectedId = state.videos[0].id;
+        renderAll();
+        syncDot.textContent = "saved";
+      })
+      .catch(function () { syncDot.textContent = "couldn't load — refresh"; });
+  }
+
+  // wire app controls
   document.getElementById("newBtn").onclick = createVideo;
   document.getElementById("search").oninput = function (e) {
     state.query = e.target.value;
     renderList();
   };
 
-  load();
-  // ensure selection points at something that exists
-  if (state.selectedId && !selected()) state.selectedId = state.videos[0] ? state.videos[0].id : null;
-  renderAll();
-  seedFromRepo();
+  // auth lifecycle
+  sb.auth.onAuthStateChange(function (event, session) {
+    if (session && session.user) {
+      bootApp(session);
+    } else {
+      booted = false;
+      state.videos = [];
+      state.user = null;
+      state.selectedId = null;
+      showGate();
+    }
+  });
+
+  sb.auth.getSession().then(function (res) {
+    var session = res.data && res.data.session;
+    if (session && session.user) bootApp(session);
+    else showGate();
+  });
 })();
 </script>
 </body>
