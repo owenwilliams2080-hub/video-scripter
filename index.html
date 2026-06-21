@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Video Scripter</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1c232d;
+    --border: #2a313c;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #0d7bff;
+    --accent-soft: #0d7bff22;
+    --idea: #8b949e;
+    --scripting: #d29922;
+    --filmed: #3fb950;
+    --posted: #a371f7;
+    --danger: #f85149;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 320px;
+    min-width: 320px;
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+  .new-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .new-btn:hover { filter: brightness(1.1); }
+  .search {
+    width: 100%;
+    margin-top: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .search::placeholder { color: var(--muted); }
+
+  .list { flex: 1; overflow-y: auto; padding: 8px; }
+  .empty-list { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 16px; line-height: 1.5; }
+
+  .card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 12px;
+    margin-bottom: 8px;
+    transition: border-color .12s;
+  }
+  .card:hover { border-color: #3a4452; }
+  .card.active { border-color: var(--accent); background: var(--accent-soft); }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 7px;
+    word-break: break-word;
+    line-height: 1.3;
+  }
+  .card-title.untitled { color: var(--muted); font-weight: 500; font-style: italic; }
+  .card-meta { display: flex; align-items: center; gap: 8px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    color: #0e1116;
+  }
+  .badge.idea { background: var(--idea); }
+  .badge.scripting { background: var(--scripting); }
+  .badge.filmed { background: var(--filmed); }
+  .badge.posted { background: var(--posted); }
+  .card-date { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+  /* Editor */
+  .editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .editor-empty {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--muted); gap: 10px; text-align: center; padding: 40px;
+  }
+  .editor-empty .big { font-size: 17px; color: var(--text); font-weight: 600; }
+  .editor-scroll { flex: 1; overflow-y: auto; padding: 28px 36px 60px; }
+  .editor-inner { max-width: 760px; margin: 0 auto; }
+
+  .title-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 26px;
+    font-weight: 700;
+    padding: 0 0 14px;
+    outline: none;
+  }
+  .title-input::placeholder { color: #495362; }
+
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; flex-wrap: wrap; }
+  .status-group { display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 4px; }
+  .status-opt {
+    border: none; background: transparent; color: var(--muted);
+    font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 6px;
+    text-transform: capitalize;
+  }
+  .status-opt.sel { color: #0e1116; }
+  .status-opt.sel.idea { background: var(--idea); }
+  .status-opt.sel.scripting { background: var(--scripting); }
+  .status-opt.sel.filmed { background: var(--filmed); }
+  .status-opt.sel.posted { background: var(--posted); }
+
+  .spacer { flex: 1; }
+  .ghost-btn {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    font-size: 13px; font-weight: 600; padding: 7px 13px; border-radius: 8px;
+  }
+  .ghost-btn:hover { border-color: #3a4452; }
+  .ghost-btn.danger { color: var(--danger); }
+  .ghost-btn.danger:hover { border-color: var(--danger); }
+
+  .section { margin-bottom: 22px; }
+  .section-label {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-label .hint { color: var(--muted); font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 11px; }
+  textarea {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 13px 15px;
+    resize: vertical;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: #495362; }
+  .hook-area { min-height: 70px; }
+  .body-area { min-height: 220px; }
+  .cta-area  { min-height: 70px; }
+
+  .saved-flag { font-size: 12px; color: var(--muted); }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-thumb { background: #2a313c; border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a4452; }
+</style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand"><span class="dot"></span> Video Scripter</div>
+      <button class="new-btn" id="newBtn">+ New video idea</button>
+      <input class="search" id="search" placeholder="Search ideas…" />
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+
+  <main class="editor" id="editor"></main>
+
+<script>
+(function () {
+  "use strict";
+
+  var KEY = "video-scripter:v1";
+  var STATUSES = ["idea", "scripting", "filmed", "posted"];
+
+  var state = { videos: [], selectedId: null, query: "" };
+
+  // ---- persistence ----
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.videos)) {
+          state.videos = parsed.videos;
+          state.selectedId = parsed.selectedId || null;
+        }
+      }
+    } catch (e) { /* ignore corrupt store */ }
+  }
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ videos: state.videos, selectedId: state.selectedId }));
+    } catch (e) { /* storage full / blocked */ }
+  }
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+  function now() { return Date.now(); }
+
+  function fmtDate(ts) {
+    var d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  function selected() {
+    return state.videos.find(function (v) { return v.id === state.selectedId; }) || null;
+  }
+
+  // ---- actions ----
+  function createVideo() {
+    var v = {
+      id: uid(),
+      title: "",
+      status: "idea",
+      hook: "",
+      body: "",
+      cta: "",
+      created: now(),
+      updated: now()
+    };
+    state.videos.unshift(v);
+    state.selectedId = v.id;
+    save();
+    renderAll();
+    var t = document.querySelector(".title-input");
+    if (t) t.focus();
+  }
+
+  function deleteVideo(id) {
+    state.videos = state.videos.filter(function (v) { return v.id !== id; });
+    if (state.selectedId === id) state.selectedId = state.videos[0] ? state.videos[0].id : null;
+    save();
+    renderAll();
+  }
+
+  function patch(field, value) {
+    var v = selected();
+    if (!v) return;
+    v[field] = value;
+    v.updated = now();
+    save();
+  }
+
+  // ---- rendering ----
+  var listEl = document.getElementById("list");
+  var editorEl = document.getElementById("editor");
+
+  function visibleVideos() {
+    var q = state.query.trim().toLowerCase();
+    if (!q) return state.videos;
+    return state.videos.filter(function (v) {
+      return (v.title + " " + v.hook + " " + v.body + " " + v.cta).toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
+  function renderList() {
+    var vids = visibleVideos();
+    listEl.innerHTML = "";
+    if (state.videos.length === 0) {
+      var e = document.createElement("div");
+      e.className = "empty-list";
+      e.textContent = "No videos yet. Hit “+ New video idea” to start planning.";
+      listEl.appendChild(e);
+      return;
+    }
+    if (vids.length === 0) {
+      var n = document.createElement("div");
+      n.className = "empty-list";
+      n.textContent = "No matches.";
+      listEl.appendChild(n);
+      return;
+    }
+    vids.forEach(function (v) {
+      var card = document.createElement("div");
+      card.className = "card" + (v.id === state.selectedId ? " active" : "");
+      card.onclick = function () { state.selectedId = v.id; save(); renderAll(); };
+
+      var title = document.createElement("div");
+      if (v.title.trim()) {
+        title.className = "card-title";
+        title.textContent = v.title;
+      } else {
+        title.className = "card-title untitled";
+        title.textContent = "Untitled idea";
+      }
+
+      var meta = document.createElement("div");
+      meta.className = "card-meta";
+      var badge = document.createElement("span");
+      badge.className = "badge " + v.status;
+      badge.textContent = v.status;
+      var date = document.createElement("span");
+      date.className = "card-date";
+      date.textContent = fmtDate(v.updated);
+      meta.appendChild(badge);
+      meta.appendChild(date);
+
+      card.appendChild(title);
+      card.appendChild(meta);
+      listEl.appendChild(card);
+    });
+  }
+
+  function renderEditor() {
+    var v = selected();
+    editorEl.innerHTML = "";
+
+    if (!v) {
+      var empty = document.createElement("div");
+      empty.className = "editor-empty";
+      empty.innerHTML = '<div class="big">No video selected</div>' +
+        '<div>Pick an idea on the left, or create a new one to start scripting.</div>';
+      editorEl.appendChild(empty);
+      return;
+    }
+
+    var scroll = document.createElement("div");
+    scroll.className = "editor-scroll";
+    var inner = document.createElement("div");
+    inner.className = "editor-inner";
+
+    // title
+    var title = document.createElement("input");
+    title.className = "title-input";
+    title.placeholder = "Video title…";
+    title.value = v.title;
+    title.oninput = function () { patch("title", title.value); renderList(); };
+
+    // toolbar: status + copy + delete
+    var toolbar = document.createElement("div");
+    toolbar.className = "toolbar";
+
+    var group = document.createElement("div");
+    group.className = "status-group";
+    STATUSES.forEach(function (s) {
+      var b = document.createElement("button");
+      b.className = "status-opt " + (v.status === s ? "sel " + s : "");
+      b.textContent = s;
+      b.onclick = function () { patch("status", s); renderAll(); };
+      group.appendChild(b);
+    });
+
+    var spacer = document.createElement("div");
+    spacer.className = "spacer";
+
+    var copyBtn = document.createElement("button");
+    copyBtn.className = "ghost-btn";
+    copyBtn.textContent = "Copy script";
+    copyBtn.onclick = function () {
+      var text = buildScriptText(v);
+      copyToClipboard(text, copyBtn);
+    };
+
+    var delBtn = document.createElement("button");
+    delBtn.className = "ghost-btn danger";
+    delBtn.textContent = "Delete";
+    delBtn.onclick = function () {
+      if (confirm("Delete this video idea? This can't be undone.")) deleteVideo(v.id);
+    };
+
+    toolbar.appendChild(group);
+    toolbar.appendChild(spacer);
+    toolbar.appendChild(copyBtn);
+    toolbar.appendChild(delBtn);
+
+    // sections
+    inner.appendChild(title);
+    inner.appendChild(toolbar);
+    inner.appendChild(makeSection("Hook", "first 3 seconds — stop the scroll", "hook", v.hook, "hook-area",
+      "e.g. “Most people log workouts wrong. Here’s the 5-second fix.”"));
+    inner.appendChild(makeSection("Body", "the actual content / talking points", "body", v.body, "body-area",
+      "Beat-by-beat what you say and show…"));
+    inner.appendChild(makeSection("CTA", "what they should do next", "cta", v.cta, "cta-area",
+      "e.g. “Download Build free — link in bio.”"));
+
+    scroll.appendChild(inner);
+    editorEl.appendChild(scroll);
+  }
+
+  function makeSection(label, hint, field, value, areaClass, placeholder) {
+    var sec = document.createElement("div");
+    sec.className = "section";
+    var lab = document.createElement("div");
+    lab.className = "section-label";
+    lab.innerHTML = label + ' <span class="hint">— ' + hint + "</span>";
+    var ta = document.createElement("textarea");
+    ta.className = areaClass;
+    ta.placeholder = placeholder;
+    ta.value = value;
+    ta.oninput = function () { patch(field, ta.value); };
+    sec.appendChild(lab);
+    sec.appendChild(ta);
+    return sec;
+  }
+
+  function buildScriptText(v) {
+    var lines = [];
+    lines.push(v.title.trim() || "Untitled idea");
+    lines.push("Status: " + v.status);
+    lines.push("");
+    lines.push("HOOK");
+    lines.push(v.hook.trim() || "—");
+    lines.push("");
+    lines.push("BODY");
+    lines.push(v.body.trim() || "—");
+    lines.push("");
+    lines.push("CTA");
+    lines.push(v.cta.trim() || "—");
+    return lines.join("\n");
+  }
+
+  function copyToClipboard(text, btn) {
+    var done = function () {
+      var orig = btn.textContent;
+      btn.textContent = "Copied!";
+      setTimeout(function () { btn.textContent = orig; }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  function fallbackCopy(text, done) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { /* noop */ }
+    document.body.removeChild(ta);
+  }
+
+  function renderAll() { renderList(); renderEditor(); }
+
+  // ---- wire up ----
+  document.getElementById("newBtn").onclick = createVideo;
+  document.getElementById("search").oninput = function (e) {
+    state.query = e.target.value;
+    renderList();
+  };
+
+  load();
+  // ensure selection points at something that exists
+  if (state.selectedId && !selected()) state.selectedId = state.videos[0] ? state.videos[0].id : null;
+  renderAll();
+})();
+</script>
+</body>
+</html>
