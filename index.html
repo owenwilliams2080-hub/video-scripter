@@ -225,6 +225,12 @@
   .gate-msg { margin-top: 16px; font-size: 13px; line-height: 1.5; }
   .gate-msg.ok { color: var(--filmed); }
   .gate-msg.err { color: var(--danger); }
+  #codeInput { text-align: center; font-size: 22px; letter-spacing: 8px; font-weight: 700; }
+  .linkbtn {
+    background: none; border: none; color: var(--muted);
+    font-size: 12px; font-weight: 600; margin-top: 12px; text-decoration: underline;
+  }
+  .linkbtn:hover { color: var(--text); }
   .hidden { display: none !important; }
 
   /* folder groups in sidebar */
@@ -240,6 +246,9 @@
     margin-left: auto; background: var(--border); color: var(--muted);
     font-weight: 700; border-radius: 20px; padding: 1px 7px; font-size: 10px;
   }
+  .folder-head.draggable { cursor: grab; }
+  .folder-head.draggable:active { cursor: grabbing; }
+  .folder-head.drop-target { background: var(--accent-soft); box-shadow: inset 0 2px 0 var(--accent); }
   .card .star { color: #e3b341; margin-right: 5px; }
 
   /* star toggle in editor */
@@ -274,8 +283,19 @@
     <div class="gate-card">
       <div class="brand"><span class="dot"></span> Video Scripter</div>
       <div class="sub">Sign in to load your video ideas. They sync across every device you log in on.</div>
-      <input id="emailInput" type="email" placeholder="you@email.com" autocomplete="email" />
-      <button class="new-btn" id="loginBtn">Email me a sign-in link</button>
+
+      <div id="stepEmail">
+        <input id="emailInput" type="email" placeholder="you@email.com" autocomplete="email" />
+        <button class="new-btn" id="loginBtn">Email me a code</button>
+      </div>
+
+      <div id="stepCode" class="hidden">
+        <input id="codeInput" type="text" inputmode="numeric" autocomplete="one-time-code"
+               placeholder="6-digit code" maxlength="6" />
+        <button class="new-btn" id="verifyBtn">Verify &amp; sign in</button>
+        <button class="linkbtn" id="changeEmailBtn">Use a different email</button>
+      </div>
+
       <div class="gate-msg" id="gateMsg"></div>
     </div>
   </div>
@@ -309,7 +329,8 @@
   var STATUSES = ["idea", "scripting", "filmed", "posted"];
   var FIELDS = ["title", "status", "concept", "hook", "body", "cta"];
 
-  var state = { videos: [], selectedId: null, query: "", user: null };
+  var state = { videos: [], selectedId: null, query: "", user: null, folderOrder: [], renderedFolders: [] };
+  var dragName = null;
 
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -372,6 +393,38 @@
         if (res.error) throw res.error;
         state.videos = (res.data || []).map(rowToVideo);
       });
+  }
+
+  function loadPrefs() {
+    return sb.from("video_scripter_prefs").select("folder_order").eq("user_id", state.user.id).maybeSingle()
+      .then(function (res) {
+        state.folderOrder = (res.data && Array.isArray(res.data.folder_order)) ? res.data.folder_order : [];
+      })
+      .catch(function () { state.folderOrder = []; });
+  }
+
+  function saveFolderOrder(arr) {
+    state.folderOrder = arr;
+    syncStart();
+    sb.from("video_scripter_prefs")
+      .upsert({ user_id: state.user.id, folder_order: arr, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+      .then(function (r) { r.error ? syncErr() : syncDone(); });
+  }
+
+  // move folder `from` to sit where `to` currently is
+  function reorderFolders(from, to) {
+    var cur = (state.renderedFolders || []).slice();
+    var fi = cur.indexOf(from);
+    if (fi !== -1) cur.splice(fi, 1);
+    var ti = cur.indexOf(to);
+    if (ti === -1) ti = cur.length;
+    cur.splice(ti, 0, from);
+    saveFolderOrder(cur);
+    renderList();
+  }
+  function clearDropHl() {
+    var hs = listEl.querySelectorAll(".folder-head.drop-target");
+    for (var i = 0; i < hs.length; i++) hs[i].classList.remove("drop-target");
   }
 
   // Pull any NEW ideas from ideas.json into this account (never re-adds deleted ones).
@@ -546,11 +599,16 @@
       var k = (v.folder || "").trim();
       (groups[k] = groups[k] || []).push(v);
     });
+    var order = state.folderOrder || [];
+    function rank(n) { var i = order.indexOf(n); return i === -1 ? 1e6 : i; }
     var names = Object.keys(groups).sort(function (a, b) {
       if (a === "") return 1;   // "No folder" sinks to the bottom
       if (b === "") return -1;
+      var ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;            // saved custom order first
       return a.toLowerCase().localeCompare(b.toLowerCase());
     });
+    state.renderedFolders = names.filter(function (n) { return n !== ""; });
 
     names.forEach(function (name) {
       var items = groups[name].slice().sort(byStarThenDate);
@@ -570,6 +628,33 @@
       head.appendChild(lbl);
       head.appendChild(cnt);
       head.onclick = function () { if (!forceOpen) toggleCollapse(name); };
+
+      // drag to reorder (real folders only, not "No folder")
+      if (name !== "") {
+        head.draggable = true;
+        head.classList.add("draggable");
+        head.ondragstart = function (e) {
+          dragName = name;
+          e.dataTransfer.effectAllowed = "move";
+          try { e.dataTransfer.setData("text/plain", name); } catch (_) {}
+        };
+        head.ondragend = function () { dragName = null; clearDropHl(); };
+        head.ondragover = function (e) {
+          if (dragName && dragName !== name) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            head.classList.add("drop-target");
+          }
+        };
+        head.ondragleave = function () { head.classList.remove("drop-target"); };
+        head.ondrop = function (e) {
+          e.preventDefault();
+          head.classList.remove("drop-target");
+          if (dragName && dragName !== name) reorderFolders(dragName, name);
+          dragName = null;
+        };
+      }
+
       listEl.appendChild(head);
 
       if (!isOpen) return;
@@ -754,6 +839,12 @@
   var gateMsg = document.getElementById("gateMsg");
   var emailInput = document.getElementById("emailInput");
   var loginBtn = document.getElementById("loginBtn");
+  var stepEmail = document.getElementById("stepEmail");
+  var stepCode = document.getElementById("stepCode");
+  var codeInput = document.getElementById("codeInput");
+  var verifyBtn = document.getElementById("verifyBtn");
+  var changeEmailBtn = document.getElementById("changeEmailBtn");
+  var pendingEmail = "";
 
   function showGate() {
     gate.classList.remove("hidden");
@@ -765,28 +856,62 @@
     sidebar.classList.remove("hidden");
     editorEl.classList.remove("hidden");
   }
+  function showEmailStep() {
+    stepCode.classList.add("hidden");
+    stepEmail.classList.remove("hidden");
+    gateMsg.textContent = "";
+    emailInput.focus();
+  }
+  function showCodeStep() {
+    stepEmail.classList.add("hidden");
+    stepCode.classList.remove("hidden");
+    codeInput.value = "";
+    codeInput.focus();
+  }
 
+  // Step 1: send the code
   loginBtn.onclick = function () {
     var email = (emailInput.value || "").trim();
     if (!email) { gateMsg.className = "gate-msg err"; gateMsg.textContent = "Enter your email first."; return; }
     loginBtn.disabled = true;
     gateMsg.className = "gate-msg";
     gateMsg.textContent = "Sending…";
-    sb.auth.signInWithOtp({
-      email: email,
-      options: { emailRedirectTo: location.href.split("#")[0] }
-    }).then(function (res) {
-      loginBtn.disabled = false;
-      if (res.error) {
-        gateMsg.className = "gate-msg err";
-        gateMsg.textContent = res.error.message;
-      } else {
-        gateMsg.className = "gate-msg ok";
-        gateMsg.textContent = "Check your email and tap the sign-in link. You can close this tab.";
-      }
-    });
+    sb.auth.signInWithOtp({ email: email, options: { shouldCreateUser: true } })
+      .then(function (res) {
+        loginBtn.disabled = false;
+        if (res.error) {
+          gateMsg.className = "gate-msg err";
+          gateMsg.textContent = res.error.message;
+        } else {
+          pendingEmail = email;
+          showCodeStep();
+          gateMsg.className = "gate-msg ok";
+          gateMsg.textContent = "We emailed a 6-digit code to " + email + ". Enter it above.";
+        }
+      });
   };
+
+  // Step 2: verify the code
+  verifyBtn.onclick = function () {
+    var code = (codeInput.value || "").trim();
+    if (!code) { gateMsg.className = "gate-msg err"; gateMsg.textContent = "Enter the code from your email."; return; }
+    verifyBtn.disabled = true;
+    gateMsg.className = "gate-msg";
+    gateMsg.textContent = "Verifying…";
+    sb.auth.verifyOtp({ email: pendingEmail, token: code, type: "email" })
+      .then(function (res) {
+        verifyBtn.disabled = false;
+        if (res.error) {
+          gateMsg.className = "gate-msg err";
+          gateMsg.textContent = "That code didn't work — double-check it or request a new one.";
+        }
+        // success: onAuthStateChange fires and boots the app
+      });
+  };
+
+  changeEmailBtn.onclick = showEmailStep;
   emailInput.onkeydown = function (e) { if (e.key === "Enter") loginBtn.click(); };
+  codeInput.onkeydown = function (e) { if (e.key === "Enter") verifyBtn.click(); };
 
   document.getElementById("signoutBtn").onclick = function () {
     sb.auth.signOut();
@@ -803,6 +928,7 @@
     loadVideos()
       .then(seedFromRepo)
       .then(loadVideos)
+      .then(loadPrefs)
       .then(function () {
         if (state.selectedId && !selected()) state.selectedId = null;
         if (!state.selectedId && state.videos[0]) state.selectedId = state.videos[0].id;

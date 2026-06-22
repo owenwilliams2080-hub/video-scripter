@@ -54,10 +54,17 @@ Commit and push. Refresh the live app → it shows up.
 - Hosting: GitHub Pages (static), auto-deploys on push to `master`.
 - No build step, no dependencies to install. Supabase JS loads from a CDN.
 
-## One-time auth setup
+## Login
 
-For the email sign-in link to land back on the live app, the Pages URL must be in
-Supabase's allowed redirect URLs:
+Sign-in is a **6-digit code** emailed to you (no links, no redirects). Enter your
+email → get a code → type it in. Your session persists per browser.
 
-Supabase dashboard → **Authentication → URL Configuration → Redirect URLs** →
-add `https://owenwilliams2080-hub.github.io/video-scripter/`
+For the email to contain the code, the Supabase **Magic Link** email template must
+include `{{ .Token }}`. Dashboard → **Authentication → Email Templates → Magic Link**.
+
+## Organizing
+
+- **Folders** group the sidebar. Set an idea's folder with the 📁 picker.
+- **Drag a folder header** to reorder folders (order saved to your account).
+- **Star** an idea (★ in the editor) to float it to the top of its folder.
+- Collapse/expand folders by clicking the header chevron (remembered per browser).
