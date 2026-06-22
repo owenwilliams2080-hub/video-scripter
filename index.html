@@ -227,6 +227,41 @@
   .gate-msg.err { color: var(--danger); }
   .hidden { display: none !important; }
 
+  /* folder groups in sidebar */
+  .folder-head {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 8px 6px; cursor: pointer; user-select: none;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--muted);
+  }
+  .folder-head:hover { color: var(--text); }
+  .folder-head .chev { width: 10px; font-size: 9px; }
+  .folder-head .count {
+    margin-left: auto; background: var(--border); color: var(--muted);
+    font-weight: 700; border-radius: 20px; padding: 1px 7px; font-size: 10px;
+  }
+  .card .star { color: #e3b341; margin-right: 5px; }
+
+  /* star toggle in editor */
+  .star-btn {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; font-size: 16px; line-height: 1; color: #c2cad3;
+    padding: 6px 10px;
+  }
+  .star-btn:hover { border-color: #afb8c1; }
+  .star-btn.on { color: #e3b341; border-color: #e3b341; background: #e3b3411a; }
+
+  /* folder picker */
+  .folder-row { display: flex; align-items: center; gap: 8px; margin: -10px 0 22px; }
+  .folder-row .fl { font-size: 15px; }
+  .folder-input {
+    flex: 1; max-width: 300px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 11px; font-size: 13px; color: var(--text); outline: none;
+  }
+  .folder-input:focus { border-color: var(--accent); }
+  .folder-input::placeholder { color: #8b95a1; }
+
   /* scrollbars */
   ::-webkit-scrollbar { width: 10px; }
   ::-webkit-scrollbar-thumb { background: #d0d7de; border-radius: 6px; }
@@ -288,6 +323,32 @@
     return state.videos.find(function (v) { return v.id === state.selectedId; }) || null;
   }
 
+  // collapsed folder state (per browser)
+  var collapsed = {};
+  (function () {
+    try {
+      var r = localStorage.getItem("vs:collapsed");
+      var a = r ? JSON.parse(r) : [];
+      if (Array.isArray(a)) a.forEach(function (f) { collapsed[f] = true; });
+    } catch (e) {}
+  })();
+  function toggleCollapse(name) {
+    collapsed[name] = !collapsed[name];
+    try {
+      var keep = Object.keys(collapsed).filter(function (k) { return collapsed[k]; });
+      localStorage.setItem("vs:collapsed", JSON.stringify(keep));
+    } catch (e) {}
+    renderList();
+  }
+  function folderNames() {
+    var seen = {}, out = [];
+    state.videos.forEach(function (v) {
+      var f = (v.folder || "").trim();
+      if (f && !seen[f]) { seen[f] = true; out.push(f); }
+    });
+    return out.sort(function (a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); });
+  }
+
   // ---- sync indicator ----
   var syncDot = document.getElementById("syncDot");
   var pending = 0;
@@ -300,7 +361,8 @@
     return {
       id: r.id, title: r.title || "", status: r.status || "idea",
       concept: r.concept || "", hook: r.hook || "", body: r.body || "",
-      cta: r.cta || "", created: Number(r.created) || 0, updated: Number(r.updated) || 0
+      cta: r.cta || "", created: Number(r.created) || 0, updated: Number(r.updated) || 0,
+      starred: !!r.starred, folder: r.folder || ""
     };
   }
 
@@ -338,6 +400,8 @@
             hook: it.hook || "",
             body: it.body || "",
             cta: it.cta || "",
+            folder: it.folder || "",
+            starred: false,
             created: base + idx,
             updated: base + idx
           };
@@ -354,10 +418,12 @@
   }
 
   function createVideo() {
+    var cur = selected();
+    var inheritFolder = cur ? (cur.folder || "") : "";
     var v = {
       id: uid(), title: "", status: "idea",
       concept: "", hook: "", body: "", cta: "",
-      created: now(), updated: now()
+      created: now(), updated: now(), starred: false, folder: inheritFolder
     };
     state.videos.unshift(v);
     state.selectedId = v.id;
@@ -367,7 +433,8 @@
     syncStart();
     sb.from("video_scripter_videos").insert({
       user_id: state.user.id, id: v.id, title: "", status: "idea",
-      concept: "", hook: "", body: "", cta: "", created: v.created, updated: v.updated
+      concept: "", hook: "", body: "", cta: "", created: v.created, updated: v.updated,
+      starred: false, folder: inheritFolder
     }).then(function (r) { r.error ? syncErr() : syncDone(); });
   }
 
@@ -414,6 +481,44 @@
     });
   }
 
+  function makeCard(v) {
+    var card = document.createElement("div");
+    card.className = "card" + (v.id === state.selectedId ? " active" : "");
+    card.onclick = function () { state.selectedId = v.id; renderAll(); };
+
+    var title = document.createElement("div");
+    title.className = "card-title" + (v.title.trim() ? "" : " untitled");
+    if (v.starred) {
+      var st = document.createElement("span");
+      st.className = "star";
+      st.textContent = "★";
+      title.appendChild(st);
+    }
+    title.appendChild(document.createTextNode(v.title.trim() || "Untitled idea"));
+
+    var meta = document.createElement("div");
+    meta.className = "card-meta";
+    var badge = document.createElement("span");
+    badge.className = "badge " + v.status;
+    badge.textContent = v.status;
+    var date = document.createElement("span");
+    date.className = "card-date";
+    date.textContent = fmtDate(v.updated);
+    meta.appendChild(badge);
+    meta.appendChild(date);
+
+    card.appendChild(title);
+    card.appendChild(meta);
+    return card;
+  }
+
+  // starred first, then most-recently-updated
+  function byStarThenDate(a, b) {
+    var sa = a.starred ? 1 : 0, sb = b.starred ? 1 : 0;
+    if (sa !== sb) return sb - sa;
+    return b.updated - a.updated;
+  }
+
   function renderList() {
     var vids = visibleVideos();
     listEl.innerHTML = "";
@@ -431,34 +536,44 @@
       listEl.appendChild(n);
       return;
     }
+
+    // while searching, ignore collapse so matches are always visible
+    var forceOpen = state.query.trim() !== "";
+
+    // group by folder
+    var groups = {};
     vids.forEach(function (v) {
-      var card = document.createElement("div");
-      card.className = "card" + (v.id === state.selectedId ? " active" : "");
-      card.onclick = function () { state.selectedId = v.id; renderAll(); };
+      var k = (v.folder || "").trim();
+      (groups[k] = groups[k] || []).push(v);
+    });
+    var names = Object.keys(groups).sort(function (a, b) {
+      if (a === "") return 1;   // "No folder" sinks to the bottom
+      if (b === "") return -1;
+      return a.toLowerCase().localeCompare(b.toLowerCase());
+    });
 
-      var title = document.createElement("div");
-      if (v.title.trim()) {
-        title.className = "card-title";
-        title.textContent = v.title;
-      } else {
-        title.className = "card-title untitled";
-        title.textContent = "Untitled idea";
-      }
+    names.forEach(function (name) {
+      var items = groups[name].slice().sort(byStarThenDate);
+      var isOpen = forceOpen || !collapsed[name];
 
-      var meta = document.createElement("div");
-      meta.className = "card-meta";
-      var badge = document.createElement("span");
-      badge.className = "badge " + v.status;
-      badge.textContent = v.status;
-      var date = document.createElement("span");
-      date.className = "card-date";
-      date.textContent = fmtDate(v.updated);
-      meta.appendChild(badge);
-      meta.appendChild(date);
+      var head = document.createElement("div");
+      head.className = "folder-head";
+      var chev = document.createElement("span");
+      chev.className = "chev";
+      chev.textContent = isOpen ? "▾" : "▸";
+      var lbl = document.createElement("span");
+      lbl.textContent = name || "No folder";
+      var cnt = document.createElement("span");
+      cnt.className = "count";
+      cnt.textContent = items.length;
+      head.appendChild(chev);
+      head.appendChild(lbl);
+      head.appendChild(cnt);
+      head.onclick = function () { if (!forceOpen) toggleCollapse(name); };
+      listEl.appendChild(head);
 
-      card.appendChild(title);
-      card.appendChild(meta);
-      listEl.appendChild(card);
+      if (!isOpen) return;
+      items.forEach(function (v) { listEl.appendChild(makeCard(v)); });
     });
   }
 
@@ -499,6 +614,12 @@
       group.appendChild(b);
     });
 
+    var starBtn = document.createElement("button");
+    starBtn.className = "star-btn" + (v.starred ? " on" : "");
+    starBtn.textContent = "★";
+    starBtn.title = v.starred ? "Starred — click to remove" : "Star this idea";
+    starBtn.onclick = function () { patch("starred", !v.starred); renderAll(); };
+
     var spacer = document.createElement("div");
     spacer.className = "spacer";
 
@@ -515,12 +636,37 @@
     };
 
     toolbar.appendChild(group);
+    toolbar.appendChild(starBtn);
     toolbar.appendChild(spacer);
     toolbar.appendChild(copyBtn);
     toolbar.appendChild(delBtn);
 
+    // folder picker (autocompletes existing folders, accepts new ones)
+    var folderRow = document.createElement("div");
+    folderRow.className = "folder-row";
+    var fl = document.createElement("span");
+    fl.className = "fl";
+    fl.textContent = "📁";
+    var fInput = document.createElement("input");
+    fInput.className = "folder-input";
+    fInput.setAttribute("list", "folderList");
+    fInput.placeholder = "No folder — type one (e.g. Ads, UGC)";
+    fInput.value = v.folder || "";
+    fInput.onchange = function () { patch("folder", fInput.value.trim()); renderList(); };
+    var dl = document.createElement("datalist");
+    dl.id = "folderList";
+    folderNames().forEach(function (nm) {
+      var o = document.createElement("option");
+      o.value = nm;
+      dl.appendChild(o);
+    });
+    folderRow.appendChild(fl);
+    folderRow.appendChild(fInput);
+    folderRow.appendChild(dl);
+
     inner.appendChild(title);
     inner.appendChild(toolbar);
+    inner.appendChild(folderRow);
     inner.appendChild(makeSection("Concept", "concept", v.concept || "", "concept-area",
       "e.g. “Why most workout apps make logging harder than a notebook.”"));
     inner.appendChild(makeSection("Hook", "hook", v.hook, "hook-area",

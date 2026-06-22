@@ -7,7 +7,8 @@
       "concept": "Voice logging vs. typing. The headliner ad — side-by-side friction vs. magic.",
       "hook": "Why are we still typing between sets?",
       "body": "[0s] Finish a hard set, rack it. Pick up phone, unlock, tap through menus, fat-finger the weight -> visibly annoyed. EXAGGERATE the friction.\n[hard cut] Same lifter, next set. Tap the mic: \"225 for 5.\" Set logs instantly.\n[end frame] \"Say it. Log it. Build.\"\n\nLength: 10-12s. The contrast IS the ad.",
-      "cta": "Say it. Log it. Build — free on the App Store."
+      "cta": "Say it. Log it. Build — free on the App Store.",
+      "folder": "Ads"
     },
     {
       "id": "seed-ad-photo-import",
@@ -16,7 +17,8 @@
       "concept": "Photo import. Snap any workout (screenshot/PDF/paper) -> instant routine.",
       "hook": "Stop rebuilding workouts one exercise at a time.",
       "body": "Show a complicated workout: Instagram screenshot / Notes / a coach's PDF / paper.\nFast cut or split screen: LEFT = typing it in exercise by exercise (painful). RIGHT = Build, snap the photo -> full routine appears, exercises matched.\n[end frame] \"Snap it. Lift it. Build.\"\n\nLength: 12-15s. Visibly does something other trackers can't.",
-      "cta": "Snap it. Lift it. Build — free on the App Store."
+      "cta": "Snap it. Lift it. Build — free on the App Store.",
+      "folder": "Ads"
     },
     {
       "id": "seed-ad-whole-loop",
@@ -25,7 +27,8 @@
       "concept": "Fast montage of the whole loop: voice log -> see last week -> beat it -> history -> finish.",
       "hook": "POV: tracking your lifts is finally easier than not tracking them.",
       "body": "Quick cuts: voice-log a set -> app shows last week's weight -> you beat it (PR flash) -> scroll the filling-up history -> finish-workout animation.\n[end frame] \"Build — free on the App Store.\"\n\nLength: 12-15s.",
-      "cta": "Build — free on the App Store. Link in bio."
+      "cta": "Build — free on the App Store. Link in bio.",
+      "folder": "Ads"
     },
     {
       "id": "seed-ad-progress-mirror",
@@ -34,7 +37,8 @@
       "concept": "Progress charts. Sells the emotional payoff, not just a feature.",
       "hook": "Progress you can't see in the mirror.",
       "body": "Two near-identical gym clips weeks apart (same shirt = funnier).\nReveal the chart: more weight, more reps, higher volume, new PR climbing.\n[end frame] \"The mirror lies. The numbers don't. Build.\"\n\nLength: 12-15s. Strongest once you have real data to screen-record.",
-      "cta": "The mirror lies. The numbers don't. Build — free."
+      "cta": "The mirror lies. The numbers don't. Build — free.",
+      "folder": "Ads"
     },
     {
       "id": "seed-ad-plate-calc",
@@ -43,7 +47,8 @@
       "concept": "Plate calculator. Universal pain, instant payoff, 10-min shoot.",
       "hook": "If you still count plates in your head, watch this.",
       "body": "Squinting at a loaded bar, unsure how much is on it.\nCut to Build -> exact plates per side for your target weight. Load it, lift.\n[end frame] \"Build does the math. You do the lift.\"\n\nLength: 7-10s.",
-      "cta": "Build does the math. You do the lift. Free on the App Store."
+      "cta": "Build does the math. You do the lift. Free on the App Store.",
+      "folder": "Ads"
     },
     {
       "id": "seed-ad-programs",
@@ -52,7 +57,8 @@
       "concept": "Prebuilt programs (Explore). Aimed at beginners who freeze at 'what do I do today.'",
       "hook": "Walked in with no plan? Fixed in 5 seconds.",
       "body": "Open Explore -> tap a prebuilt program -> it drops a folder of ready routines -> start day 1, log first set by voice.\n[end frame] \"~30 ready-made programs. Build.\"\n\nLength: 8-12s.",
-      "cta": "Build — free on the App Store. Link in bio."
+      "cta": "Build — free on the App Store. Link in bio.",
+      "folder": "Ads"
     },
     {
       "id": "seed-ugc-snapchat-watch",
@@ -61,7 +67,8 @@
       "concept": "Your idea: someone films you on Snap captioned 'bros been talking to his watch the whole workout' — then reveal it's voice-logging on the Apple Watch.",
       "hook": "Caption over candid footage: \"bro's been talking to his watch the entire workout 💀\"",
       "body": "[shot 1] Candid, filmed-from-across-the-gym vibe (have a friend hold it, or fake the angle). You between sets, talking to your wrist. Snap caption: \"bros been talking to his watch the whole workout.\"\n[shot 2] Cut to a close-up of YOUR view: tap the watch, say \"incline, 75 for 8\" -> the set logs on the wrist. Look up like nothing happened.\n[text] \"...he's just logging his sets 😭\" / \"it's Build.\"\n\nLength: 10-15s. Feels like a real candid clip, not an ad. The watch angle = free Apple Watch promo too.\nVariation: do the same joke with the PHONE propped on the bench instead of the watch.",
-      "cta": "It's Build — free on the App Store. Link in bio."
+      "cta": "It's Build — free on the App Store. Link in bio.",
+      "folder": "UGC"
     },
     {
       "id": "seed-ugc-remember-weight",
@@ -70,7 +77,8 @@
       "concept": "Relatable comedy. Forgetting your numbers post-workout. Barely feels like an ad.",
       "hook": "Walking out of the gym, talking to camera: \"solid session today.\"",
       "body": "[setup] Post-workout glow, walking out: \"solid session.\"\n[turn] Freeze. Text slams up: \"You said you'd remember the weight.\" Beat. Next: \"You didn't.\"\n[payoff] Quick cut to you mid-session tapping the mic -> \"incline, 75 for 8\" -> logged. \"yeah I don't do that anymore.\"\n\nLength: 10-12s. Caption: \"every. single. time. 😭 (app is Build)\"",
-      "cta": "app is Build — free on the App Store."
+      "cta": "app is Build — free on the App Store.",
+      "folder": "UGC"
     },
     {
       "id": "seed-ugc-can-it-understand",
@@ -79,7 +87,8 @@
       "concept": "Stress-test the voice logger with realistic phrases. Repeatable series — make Part 2, 3, 4.",
       "hook": "\"Let's see if Build can actually keep up.\"",
       "body": "Real gym, music playing. Fire phrases at the mic, show each one log:\n- \"225 for 5.\" OK\n- \"same weight, 4 reps.\" OK\n- \"bump it 10 pounds.\" OK\n- \"three sets of eight.\" OK\n- say it out of breath / with gym music blasting OK\n\nLength: 12-20s each. Caption: \"ok I'm impressed 😅 what should I make it log next?\"\nBuilds trust + invites comments (= reach) + endlessly repeatable.",
-      "cta": "Build — free on the App Store. What should I test next?"
+      "cta": "Build — free on the App Store. What should I test next?",
+      "folder": "UGC"
     },
     {
       "id": "seed-ugc-steal-friend-workout",
@@ -88,7 +97,8 @@
       "concept": "Frames photo import as a normal lifter behavior — copying a friend's plan from a screenshot.",
       "hook": "\"My friend sent me his push day as a screenshot. Watch this.\"",
       "body": "Hold up the messy screenshot.\nIn Build: snap it -> full routine builds itself, exercises matched.\n\"I'm literally just gonna do his workout now.\" Start lifting, voice-log the first set.\n\nLength: 15-20s. Caption: \"stealing everyone's workouts now 📸\"",
-      "cta": "Build — free on the App Store. Link in bio."
+      "cta": "Build — free on the App Store. Link in bio.",
+      "folder": "UGC"
     },
     {
       "id": "seed-ugc-real-set-raw",
@@ -97,7 +107,8 @@
       "concept": "Unpolished proof it works in an actual gym. No cuts, no editing magic.",
       "hook": "\"this is the whole reason I switched trackers.\"",
       "body": "ONE take, on purpose raw. Phone propped on a bench.\nFinish the set, rack it, tap mic: \"incline bench, 75 for 8.\" Watch it appear. Straight back to lifting.\nNo fancy captions, no cuts.\n\nLength: 8-10s. Raw > slick for trust.",
-      "cta": "Build — free on the App Store."
+      "cta": "Build — free on the App Store.",
+      "folder": "UGC"
     },
     {
       "id": "seed-ugc-tracker-personalities",
@@ -106,7 +117,8 @@
       "concept": "Comedy sketch: play each type of tracker. Build is the obvious winner without saying 'buy this.'",
       "hook": "\"which gym tracker are you 👀\"",
       "body": "Quick angle/costume changes, play each:\n- The Notes-app lifter (chaos, typos)\n- The \"I'll remember it\" guy (won't)\n- The dude typing through his ENTIRE rest period\n- The Build user: taps mic, \"225 for 5,\" back to lifting in 2 seconds\n\nLength: 15-25s. Caption: \"which one are you 👀\"",
-      "cta": "be the last guy. Build — free on the App Store."
+      "cta": "be the last guy. Build — free on the App Store.",
+      "folder": "UGC"
     },
     {
       "id": "seed-ugc-pov-aesthetic",
@@ -115,7 +127,8 @@
       "concept": "Satisfying macro montage with trending audio. Pure vibes, zero hard sell.",
       "hook": "\"that finish-workout screen >>>\"",
       "body": "Sound-on, looping. Tight macro shots:\n- tap to complete a set (the check + log-flash)\n- rest ring counting down on the watch\n- scrolling history\n- the finish-workout animation\nTrending audio over it.\n\nLength: 10-15s.",
-      "cta": "Build — free on the App Store."
+      "cta": "Build — free on the App Store.",
+      "folder": "UGC"
     },
     {
       "id": "seed-ugc-beating-last-week",
@@ -124,7 +137,8 @@
       "concept": "Sells the come-back-tomorrow loop — last weight on screen is underrated retention.",
       "hook": "Walk up to the bar: \"last week this crushed me.\"",
       "body": "[setup] Walk up to the bar: \"last week this crushed me.\" Show Build pulling up last session's number.\n[payoff] Hit the set, log it, the weight/PR ticks up. \"let's gooo.\"\n\nLength: 8-10s. Caption: \"the app showing me last week's number is lowkey why I keep going back 📈\"",
-      "cta": "Build — free on the App Store."
+      "cta": "Build — free on the App Store.",
+      "folder": "UGC"
     }
   ]
 }
