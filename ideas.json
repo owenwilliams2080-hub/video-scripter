@@ -139,6 +139,16 @@
       "body": "[setup] Walk up to the bar: \"last week this crushed me.\" Show Build pulling up last session's number.\n[payoff] Hit the set, log it, the weight/PR ticks up. \"let's gooo.\"\n\nLength: 8-10s. Caption: \"the app showing me last week's number is lowkey why I keep going back 📈\"",
       "cta": "Build — free on the App Store.",
       "folder": "UGC"
+    },
+    {
+      "id": "seed-ad-fastest-stopwatch",
+      "title": "AD — Fastest way to track, literally timed (stopwatch)",
+      "status": "idea",
+      "concept": "Lean into the new 'fastest way to track your workouts' positioning. A literal on-screen stopwatch makes the speed undeniable — typing it vs. saying it.",
+      "hook": "I timed how long it actually takes to log a set. You're not ready.",
+      "body": "[0s] Split screen, a stopwatch running on BOTH sides.\nLEFT (any typing tracker): unlock, hunt for the exercise, tap weight, tap reps, fix a typo -> clock climbs past 20s.\nRIGHT (Build): tap the mic, \"225 for 5,\" logged. Clock stops around 3s.\n[freeze both timers on screen: 0:22 vs 0:03]\n[end frame] \"The fastest way to track your workouts. Build.\"\n\nLength: 8-12s. The on-screen stopwatch does the selling — ties straight to the new tagline.",
+      "cta": "The fastest way to track your workouts. Build — free on the App Store.",
+      "folder": "Random"
     }
   ]
 }
